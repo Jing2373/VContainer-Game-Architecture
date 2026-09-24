@@ -78,12 +78,12 @@ namespace Jing.Game
         /// </summary>
         protected virtual void SetUIManager()
         {
-            uiManager?.Init(globalCamsAndCanvas.MainCanvas, globalCamsAndCanvas.PopWindowCanvas, mainUI.uiObj, popWindow.uiObj, resolver);
+            uiManager?.Init(globalCamsAndCanvas.MainCanvas, globalCamsAndCanvas.PopWindowCanvas);
         }
 
         public void OnDisable()
         {
-            uiManager?.Close();
+            uiManager?.ClosePage();
         }
 
     }

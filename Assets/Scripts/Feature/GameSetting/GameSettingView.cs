@@ -14,15 +14,15 @@ namespace Jing.Feature.Options
     {
 
         #region ::: GetUI :::
-        private TMP_Dropdown resolution_dropdown => GetUI<TMP_Dropdown>("Resolution_Dropdown");
-        private TMP_Dropdown displayMode_dropdown => GetUI<TMP_Dropdown>("DisplayMode_Dropdown");
-        private TMP_Dropdown language_dropdown => GetUI<TMP_Dropdown>("Language_Dropdown");
-        private Slider background_music_slider => GetUI<Slider>("BackgroundMusic_Slider");
-        private Slider sound_effects_slider => GetUI<Slider>("SoundEffects_Slider");
-        private Slider character_voice_slider => GetUI<Slider>("CharacterVoice_Slider");
+        private TMP_Dropdown resolution_dropdown;
+        private TMP_Dropdown displayMode_dropdown;
+        private TMP_Dropdown language_dropdown;
+        private Slider background_music_slider;
+        private Slider sound_effects_slider;
+        private Slider character_voice_slider;
 
-        private Button btn_default => GetUI<Button>("Btn_Default");
-        private Button btn_save => GetUI<Button>("Btn_Save");
+        private Button btn_default;
+        private Button btn_save;
 
         #endregion
 
@@ -45,10 +45,17 @@ namespace Jing.Feature.Options
             base.Show();
             vm.GetSetting();
         }
-
-        public override void Close()
+        protected override void AddAndGetComponent()
         {
-            base.Close();
+            base.AddAndGetComponent();
+            resolution_dropdown = collector.GetUI<TMP_Dropdown>("Resolution_Dropdown");
+            displayMode_dropdown = collector.GetUI<TMP_Dropdown>("DisplayMode_Dropdown");
+            language_dropdown = collector.GetUI<TMP_Dropdown>("Language_Dropdown");
+            background_music_slider = collector.GetUI<Slider>("BackgroundMusic_Slider");
+            sound_effects_slider = collector.GetUI<Slider>("SoundEffects_Slider");
+            character_voice_slider = collector.GetUI<Slider>("CharacterVoice_Slider");
+            btn_default = collector.GetUI<Button>("Btn_Default");
+            btn_save = collector.GetUI<Button>("Btn_Save");
         }
 
         #endregion
@@ -147,7 +154,7 @@ namespace Jing.Feature.Options
         #region ::: Button :::
 
         #region - DisplaySetting
-    
+
         private void UpdateResolution(int size)
         {
             switch (size)

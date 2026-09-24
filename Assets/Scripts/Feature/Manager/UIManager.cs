@@ -1,227 +1,294 @@
+using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using VContainer;
 using VContainer.Unity;
 
 namespace Jing.Feature.UI
 {
-    public class UIManager
+    public class UIManager : IUIManager
     {
-        private Canvas main_canvas;
-        private Canvas pop_canvas;
 
-        private Dictionary<string, GameObject> mainUI_Dic = new Dictionary<string, GameObject>();
-        private Dictionary<string, GameObject> popWindowsUI_Dic = new Dictionary<string, GameObject>();
+        private Canvas mainCanvas;
+        private Canvas popupCanvas;
 
-        private Dictionary<string, GameObject> pageDic = new Dictionary<string, GameObject>();
-        private Stack<GameObject> pages = new Stack<GameObject>();
-        private GameObject currentPopWindows = null;  //預計只會有一個開始彈跳視窗
+        private Dictionary<string, GameObject> pageInst = new Dictionary<string, GameObject>(); // Instantiate
+
+        private Dictionary<string, GameObject> popupInst = new Dictionary<string, GameObject>();    //Instantiate
+
+        private readonly Stack<GameObject> pageHistory =
+            new Stack<GameObject>();
+
+        private GameObject currentPopup;
+
+        private bool initialized;
+
+
+        #region ::: Inject :::
         private IObjectResolver resolver;
+        private PageAssetProvider pageAssetProvider;
 
-        #region ::: Public Methods :::
-        /// <summary>
-        /// 初始化
-        /// </summary>
-        public void Init(Canvas main_canvas, Canvas pop_canvas, Dictionary<string, GameObject> mainUI, Dictionary<string, GameObject> popWindows, IObjectResolver resolver)
+        [Inject]
+        public virtual void Construct(IObjectResolver resolver, PageAssetProvider pageAssetProvider)
         {
-            this.main_canvas = main_canvas;
-            this.pop_canvas = pop_canvas;
-            mainUI_Dic = mainUI;
-            popWindowsUI_Dic = popWindows;
             this.resolver = resolver;
-
-
+            this.pageAssetProvider = pageAssetProvider;
         }
+        #endregion
 
-        /// <summary>
-        /// 顯示頁面
-        /// </summary> 
-        public void ShowPage(string pageName, bool hideCurrent = true)
+        #region Public Methods
+
+        /// <reminder>
+        /// Called from main scene
+        /// </reminder>
+        public async UniTask Init(Canvas mainCanvas, Canvas popupCanvas)
         {
-            if (hideCurrent && pages.Count > 0)
+            if (mainCanvas == null || popupCanvas == null)
             {
-                GameObject currentUI = pages.Peek();
-                ClosePage(currentUI);
+                Debug.LogError("mainCanvas and popupCanvas must not be null.");
             }
 
-            GameObject page = GetOrCreatePage(pageName);
-            if (page == null) return;
+            if (initialized) { CloseAll(); }
 
-            OpenPage(page);
-            pages.Push(page);
+            this.mainCanvas = mainCanvas;
+            this.popupCanvas = popupCanvas;
+            await pageAssetProvider.LoadFromAddressable();
+
+            initialized = true;
         }
 
-        /// <summary>
-        /// 打開彈跳視窗（之前頁面不影藏）
-        /// </summary>
-        public GameObject OpenPopWindows(string popName)
+        public async UniTask ShowPage(string pageName)
         {
-            GameObject page = GetOrCreatePopWindow(popName);
-            if (page == null) return null;
-            if (currentPopWindows != null)
+            EnsureInitialized();
+
+            GameObject page = await GetOrCreatePage(pageName);
+
+            if (page == null)
             {
-                ClosePopWindows();
+                Debug.LogError("Can not found page, name is" + pageName);
+                return;
             }
+
             OpenPage(page);
-            page.transform.SetAsLastSibling();
-
-            currentPopWindows = page;
-            return currentPopWindows;
-        }
-
-        /// <summary>
-        /// 關閉彈跳視窗
-        /// </summary>
-        public void ClosePopWindows()
-        {
-            if (currentPopWindows == null) return;
-
-            ClosePage(currentPopWindows);
-            currentPopWindows = null;
+            pageHistory.Push(page);
 
         }
 
-        /// <summary>
-        /// 返回上一頁
-        /// </summary>
-        public void Back()
+        public async UniTask ShowPageAndHideCurrent(string pageName)
         {
-            if (pages.Count <= 1)
+            EnsureInitialized();
+
+            GameObject page = await GetOrCreatePage(pageName);
+
+            if (page == null)
+            {
+                Debug.LogError("Can not found page, name is" + pageName);
+                return;
+            }
+            if (pageHistory.Count > 0)
+            {
+                ClosePage(pageHistory.Pop());
+            }
+
+            OpenPage(page);
+            pageHistory.Push(page);
+
+        }
+
+        public async UniTask ShowPageAndReleaseCurrent(string pageName)
+        {
+            EnsureInitialized();
+
+            GameObject page = await GetOrCreatePage(pageName);
+
+            if (page == null)
+            {
+                Debug.LogError("Can not found page, name is" + pageName);
+                return;
+            }
+            if (pageHistory.Count > 0)
+            {
+                GameObject current = pageHistory.Pop();
+                ClosePage(current);
+                pageAssetProvider.ReleaseAddressableByPageName(current.name);
+            }
+
+            OpenPage(page);
+            pageHistory.Push(page);
+
+        }
+
+        public void ClosePage()
+        {
+            EnsureInitialized();
+
+            if (pageHistory.Count <= 1) { return; }
+
+            GameObject currentPage = pageHistory.Pop();
+            ClosePage(currentPage);
+
+            GameObject previousPage = pageHistory.Peek();
+            OpenPage(previousPage);
+        }
+
+        public void OpenPopup(string popupName)
+        {
+            EnsureInitialized();
+
+            GameObject popup = GetOrCreatePopup(popupName);
+
+            if (popup == null)
+            {
+                Debug.LogError("Can not found popup, name is" + popupName);
+                return;
+            }
+
+            if (currentPopup == popup)
+            {
+                OpenPage(popup);
+                popup.transform.SetAsLastSibling();
+                return;
+            }
+
+            ClosePopup();
+
+            OpenPage(popup);
+            popup.transform.SetAsLastSibling();
+            currentPopup = popup;
+        }
+
+        public void ClosePopup()
+        {
+            if (currentPopup == null)
             {
                 return;
             }
 
-            GameObject nowPage = pages.Pop();
-            ClosePage(nowPage);
-
-            GameObject previous = pages.Peek();
-            OpenPage(previous);
+            ClosePage(currentPopup);
+            currentPopup = null;
         }
 
-        /// <summary>
-        /// 返回到初始介面
-        /// </summary>
-        public void BackHome()
+        public void CloseAll()
         {
-            while (pages.Count > 1)
+            //Only Page
+            //Do something when the scene changes
+            foreach (var obj in pageInst)
             {
-                GameObject nowPage = pages.Pop();
-                ClosePage(nowPage);
+                if (obj.Value != null)
+                {
+                    ClosePage(obj.Value);
+                }
             }
-            GameObject previous = pages.Peek();
-            OpenPage(previous);
-        }
+            pageInst.Clear();
 
-        /// <summary>
-        /// 關閉所有介面（跳場景用）
-        /// </summary>
-        public void Close()
-        {
-
-            while (pages.Count > 0)
-            {
-                GameObject nowPage = pages.Pop();
-                ClosePage(nowPage);
-            }
-            pageDic.Clear();
-            currentPopWindows = null;
-            mainUI_Dic.Clear();
-            popWindowsUI_Dic.Clear();
-            main_canvas = null;
-            pop_canvas = null;
-        }
-
-        public bool ConfirmPageIsDisplay(string page_name)
-        {
-            GameObject obj = pages.FirstOrDefault(page => page.name == page_name);
-            return obj != null;
         }
 
         #endregion
 
-        #region ::: Private Methods :::
-        /// <summary>
-        /// 取得或創建
-        /// </summary>
-        private GameObject GetOrCreatePage(string pageName)
+        #region Create Methods
+
+        private async UniTask<GameObject> GetOrCreatePage(string pageName)
         {
-            if (pageDic.TryGetValue(pageName, out var existingPage))
+            if (pageInst.TryGetValue(pageName, out GameObject existingView))
             {
-                return existingPage;
+                if (existingView != null)
+                {
+                    return existingView;
+                }
             }
-            mainUI_Dic.TryGetValue(pageName, out GameObject prefab);
-
-            if (prefab == null)
+            if (!pageAssetProvider.uiObj.TryGetValue(pageName, out GameObject prefab))
             {
-                Debug.LogWarning($"UIManager: Prefab '{pageName}' not found.");
-                return null;
+                prefab = await pageAssetProvider.LoadFromAddressableByPageName(pageName);
+                if (prefab == null)
+                {
+                    return null;
+                }
             }
-            GameObject instance = GameObject.Instantiate(prefab, main_canvas.transform);
-            instance.name = pageName;
-            instance.SetActive(false);
 
-            pageDic[pageName] = instance;
-
-            resolver.InjectGameObject(instance);
-            return instance;
+            GameObject obj = GameObject.Instantiate(prefab, mainCanvas.transform);
+            obj.name = pageName;
+            obj.SetActive(false);
+            resolver.InjectGameObject(obj);
+            pageInst.Add(pageName, obj);
+            return obj;
         }
 
-        private GameObject GetOrCreatePopWindow(string popName)
+        private GameObject GetOrCreatePopup(string popupName)
         {
-            if (pageDic.TryGetValue(popName, out var existingPage))
+            if (popupInst.TryGetValue(popupName, out GameObject existingView))
             {
-                return existingPage;
+                if (existingView != null)
+                {
+                    return existingView;
+                }
             }
-            popWindowsUI_Dic.TryGetValue(popName, out GameObject pop);
-            if (pop == null)
+            if (!pageAssetProvider.popObj.TryGetValue(popupName, out GameObject prefab))
             {
-                Debug.LogWarning($"UIManager: PopWindows '{popName}' not found.");
+                Debug.LogError($"UIManager Error : Popup Object cannot found, name is {popupName}");
                 return null;
             }
-            GameObject instance = GameObject.Instantiate(pop, pop_canvas.transform);
-            instance.name = popName;
-            instance.SetActive(false);
 
-            pageDic[popName] = instance;
-            return instance;
-
+            GameObject obj = GameObject.Instantiate(prefab, popupCanvas.transform);
+            obj.name = popupName;
+            obj.SetActive(false);
+            resolver.InjectGameObject(obj);
+            popupInst.Add(popupName, obj);
+            return obj;
         }
+        #endregion
 
-        /// <summary>
-        /// 打開介面
-        /// </summary>
+        #region View Methods
+
         private void OpenPage(GameObject page)
         {
-            if (!page.activeSelf)
+            if (page == null)
             {
-                page.SetActive(true);
+                return;
+            }
 
-                IBaseView[] views = page.GetComponents<IBaseView>();
+            page.SetActive(true);
 
-                foreach (var v in views)
+            BaseView[] views = page.GetComponents<BaseView>();
+
+            foreach (BaseView view in views)
+            {
+                if (view != null)
                 {
-                    v.Show();
+                    view.Show();
                 }
             }
         }
 
-        /// <summary>
-        /// 關閉介面
-        /// </summary>
         private void ClosePage(GameObject page)
         {
-            Debug.Log("Close=" + page.name);
-            page.SetActive(false);
-
-            IBaseView[] views = page.GetComponents<IBaseView>();
-            foreach (var v in views)
+            if (page == null)
             {
-                v.Close();
+                return;
             }
+
+            BaseView[] views = page.GetComponents<BaseView>();
+
+            foreach (BaseView view in views)
+            {
+                if (view != null)
+                {
+                    view.Close();
+                }
+            }
+            page.SetActive(false);
         }
+
         #endregion
 
+        private void EnsureInitialized()
+        {
+            if (!initialized)
+            {
+                throw new InvalidOperationException("ERROR! UIManager has not been initialized.");
+            }
+        }
 
     }
 }

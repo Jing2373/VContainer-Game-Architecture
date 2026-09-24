@@ -11,65 +11,58 @@ namespace Jing.Feature
     {
 
         #region ::: GetUI :::
-        protected Button btn_Back => GetUI<Button>("Btn_Back");
+        protected Button btn_Back;
         #endregion
 
 
         #region ::: Inject :::
-        protected UIManager uiManager;
+        protected IUIManager uiManager;
 
         [Inject]
-        public void Construct(UIManager uiManager)
+        public void Construct(IUIManager uiManager)
         {
             this.uiManager = uiManager;
         }
 
         #endregion
 
-        #region ::: 繼承 :::
-        /// <summary>
-        /// 顯示
-        /// </summary>
-        public override void Show()
+        #region ::: Override :::
+        protected override void AddAndGetComponent()
         {
-            AddListener();
+           base.AddAndGetComponent();
+           btn_Back = collector.GetUI<Button>("Btn_Back");
         }
 
-        /// <summary>
-        /// 關閉
-        /// </summary>
-        public override void Close()
-        {
-            RemoveListener();
-        }
         #endregion
 
-        #region ::: Listener 監聽 :::
+        #region ::: Listener :::
 
-        protected virtual void AddListener()
+        protected override void AddListener()
         {
+            base.AddListener();
             btn_Back?.onClick.AddListener(BtnBack);
         }
 
-        protected virtual void RemoveListener()
+        protected override void RemoveListener()
         {
+            base.RemoveListener();
             btn_Back?.onClick.RemoveListener(BtnBack);
         }
 
         #endregion
 
 
-        #region :::  按鈕區  :::
+        #region :::  Button Click  :::
         /// <summary>
-        /// 返回
+        /// Back
         /// </summary>
         protected virtual void BtnBack()
         {
-            uiManager.Back();
+            uiManager.ClosePage();
         }
 
         /// <summary>
-        /// 按鈕滑入（可能會有提示視窗）
+        /// ButtonEnter Show
         /// </summary>
         protected virtual void BtnEnter() { }
 

@@ -60,7 +60,7 @@ namespace Jing.VContainerSetting
 
         private void Singleton(IContainerBuilder builder)
         {
-            builder.Register<UIManager>(Lifetime.Singleton);
+            builder.Register<UIManager>(Lifetime.Singleton).As<IUIManager>();
             builder.Register<Data_GameInfo>(Lifetime.Singleton);
             builder.Register<AddressableTools>(Lifetime.Singleton).As<IAddressableTools>();
         }
