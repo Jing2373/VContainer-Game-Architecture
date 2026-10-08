@@ -1,30 +1,48 @@
-<div align="center">
+# 🎮 Unity UI Management System
 
-# 🎮 VContainer Game Architecture
-
-![Unity](https://img.shields.io/badge/Unity-6000.0-black.svg?style=flat-square&logo=unity)
-![C#](https://img.shields.io/badge/C%23-9.0-green.svg?style=flat-square)
-![Architecture](https://img.shields.io/badge/Architecture-MVVM-blue.svg?style=flat-square)
-
-A core game architecture framework for Unity. It uses a clean 3-scene flow, MVVM architecture, and VContainer to build a strong foundation for games.
-
-</div>
+A Unity project demonstrating **dynamic UI creation**, **Addressables integration**, and a **custom UI binding system** through a simple login interface.
 
 ## 📝 About
 
-> **⚠️ Please note:** This repository only has pure code and frameworks. It does not include actual game art or 3D models.
+> **⚠️ Please note:** This repository focuses on UI management and architecture. The login page serves as a demonstration of the underlying systems rather than a complete authentication solution.
 
-This repository shows my core game architecture. I use the **MVVM architecture** and **VContainer** for Dependency Injection (DI) to keep the code clean and easy to test. 
+This project demonstrates how to build a flexible and maintainable UI system in Unity.
 
-To make the game run smoothly, I used a **3-Scene Flow**:
+Instead of placing UI elements directly in the scene, I use a custom **UIManager** with **Unity Addressables** to dynamically load and instantiate UI prefabs at runtime.
 
-* **InitialScene:** The first scene. It handles the download progress. It holds the *only* `DontDestroyOnLoad` GameObject in the entire game. This object keeps the Global VContainer settings, the main Camera, and the Canvas. Sharing one Camera and Canvas makes the UI easy to manage.
-* **StartScene:** The main menu. It handles music and audio settings. By the way, I use the **Object Pool** pattern for the audio player to save memory and keep the game running fast.
-* **GameScene:** The main game world. It includes tools for **Addressables** to download objects and manage game data.
+I also developed a custom **UI Collector** that automatically collects references to child UI elements with the `UIBind` component. This approach reduces the need for traditional methods such as `Transform.Find()` or manually assigning references through the Unity Inspector.
 
+The project uses a **Single-Scene Structure**:
+
+- **LoginScene:** The only scene in the project. It provides the environment for dynamically loading and displaying the login interface.
+
+## ✨ Key Features
+
+### 1. Dynamic UI Management
+
+- Uses a custom `UIManager` to manage UI creation.
+- Integrates **Unity Addressables** to load and instantiate UI prefabs at runtime.
+- Keeps UI prefabs separate from the scene instead of placing them directly in the Hierarchy.
+- Provides a foundation for managing UI elements in larger projects.
+
+### 2. Custom UI Binding System
+
+- Implements a custom **UI Collector** to gather references to child UI elements.
+- Uses the `UIBind` component to identify UI elements that need to be collected.
+- Reduces reliance on `Transform.Find()` and manual Inspector assignments.
+- Improves code maintainability by simplifying how UI components are referenced.
+
+### 3. Single-Scene Architecture
+
+- Uses a single scene to demonstrate the UI management system.
+- Dynamically creates the login interface through `UIManager`.
+- Keeps the scene structure simple while demonstrating reusable UI management techniques.
 
 ## 🛠️ Built With
 
-* **Engine:** Unity 6000.0.74f1
-* **Framework:** VContainer, UniTask
-* **Architecture:** MVVM
+- **Engine:** Unity 6000.0.74f1
+- **Language:** C#
+- **Asset Management:** Unity Addressables
+- **UI Management:** Custom UIManager
+- **UI Binding:** Custom UI Collector & UIBind
+- **Structure:** Single Scene
