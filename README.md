@@ -47,3 +47,6 @@ The project uses a **Single-Scene Structure**:
 - **UI Management:** Custom UIManager
 - **UI Binding:** Custom UI Collector & UIBind
 - **Structure:** Single Scene
+
+## 🎨 Assets
+- AI-generated visual assets and free third-party icons.
